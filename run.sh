@@ -1,0 +1,3 @@
+python main.py ctdet --arch sfl_50 --deform_conv DeformConvWithOffsetScaleBoundPositive --head_conv 0 --exp_id coco_sfl_2x_256_accel --input_res 256 --batch_size 256 --lr 1e-3 --gpus 0,1,2,3 --num_workers 16 --num_epochs 230 --lr_step 180,210
+
+python quant_main.py ctdet --arch sfl_50 --deform_conv DeformConvWithOffsetScaleBoundPositive --head_conv 0 --exp_id coco_sfl_2x_256_accel --input_res 256 --batch_size 256 --lr 1e-3 --gpus 0,1,2,3 --num_workers 16 --num_epochs 230 --lr_step 180,210
