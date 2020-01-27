@@ -351,18 +351,18 @@ class DeformConvWithOffsetScaleBoundPositive(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1,
                  groups=1, deformable_groups=1, bias=False, offset_bound=8, hidden_state=64):
         super(DeformConvWithOffsetScaleBoundPositive, self).__init__()
-        self.conv_scale = nn.Conv2d(in_channels, deformable_groups, kernel_size=3, stride=1, padding=1, bias=True)
-        # self.conv_scale = nn.Sequential(
-        #     # pw
-        #     nn.Conv2d(in_channels, hidden_state, 1, 1, 0, bias=False),
-        #     nn.BatchNorm2d(hidden_state),
-        #     nn.ReLU(inplace=True),
-        #     # dw
-        #     nn.Conv2d(hidden_state, hidden_state, 3, 1, 1, groups=hidden_state, bias=False),
-        #     nn.BatchNorm2d(hidden_state),
-        #     # pw-linear
-        #     nn.Conv2d(hidden_state, deformable_groups, 1, 1, 0, bias=False)
-        # )
+        # self.conv_scale = nn.Conv2d(in_channels, deformable_groups, kernel_size=3, stride=1, padding=1, bias=True)
+        self.conv_scale = nn.Sequential(
+            # pw
+            nn.Conv2d(in_channels, hidden_state, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(hidden_state),
+            nn.ReLU(inplace=True),
+            # dw
+            nn.Conv2d(hidden_state, hidden_state, 3, 1, 1, groups=hidden_state, bias=False),
+            nn.BatchNorm2d(hidden_state),
+            # pw-linear
+            nn.Conv2d(hidden_state, deformable_groups, 1, 1, 0, bias=False)
+        )
 
         if type(self.conv_scale) == nn.Conv2d:
             self.conv_scale.weight.data.zero_()
