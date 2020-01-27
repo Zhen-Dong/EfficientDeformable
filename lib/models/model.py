@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import torchvision.models as models
+# import torchvision.models as models
 import torch
 import torch.nn as nn
 import os
@@ -13,6 +13,7 @@ import os
 from .networks.dla_dcn import get_dla_dcn
 from .networks.sfl_dcn import get_sfl_dcn
 from .networks.resnet_dcn import get_pose_net as get_pose_net_dcn
+from .networks.shufflenetv2_dcn import get_shufflenetv2_dcn
 # from .networks.large_hourglass import get_large_hourglass_net
 
 _model_factory = {
@@ -21,6 +22,7 @@ _model_factory = {
   'dla': get_dla_dcn,
   'sfl': get_sfl_dcn,
   'resdcn': get_pose_net_dcn,
+  'shufflenetv2': get_shufflenetv2_dcn
   # 'hourglass': get_large_hourglass_net,
 }
 
