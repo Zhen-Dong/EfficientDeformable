@@ -195,6 +195,7 @@ def fill_fc_weights(layers):
             if m.bias is not None:
                 nn.init.constant_(m.bias, 0)
 
+
 class PoseResNet(nn.Module):
 
     def __init__(self, block, layers, heads, head_conv):
@@ -224,8 +225,19 @@ class PoseResNet(nn.Module):
             classes = self.heads[head]
             if head_conv > 0:
                 fc = nn.Sequential(
-                    nn.Conv2d(64, head_conv, kernel_size=3, padding=1, bias=True),
+                    # nn.Conv2d(64, head_conv, kernel_size=3, padding=1, bias=True),
+
                     # BaseNode(64, head_conv, stride=1, conv_kernel=nn.Conv2d),
+                    nn.Conv2d(64, head_conv, 1, 1, 0, bias=False),
+                    nn.BatchNorm2d(head_conv),
+                    nn.ReLU(inplace=True),
+                    # dw
+                    nn.Conv2d(head_conv, head_conv, 3, 1, 1, groups=head_conv, bias=False),
+                    nn.BatchNorm2d(head_conv),
+                    # pw-linear
+                    nn.Conv2d(head_conv, head_conv, 1, 1, 0, bias=False),
+                    nn.BatchNorm2d(head_conv),
+
                     nn.ReLU(inplace=True),
                     nn.Conv2d(head_conv, classes,
                         kernel_size=1, stride=1,
@@ -256,14 +268,13 @@ class PoseResNet(nn.Module):
 
         layers = []
         layers.append(block(self.inplanes, planes, stride, downsample))
-        # layers.append(BaseNode(self.inplanes, planes, stride, nn.Conv2d))
         self.inplanes = planes * block.expansion
         for i in range(1, blocks):
             layers.append(block(self.inplanes, planes))
 
         return nn.Sequential(*layers)
 
-    ## This is for efficient Shufflenet-V2 backbone
+    # This is for efficient Shufflenet-V2 backbone
     # def _make_layer(self, block, planes, blocks, stride=1):
     #     downsample = None
     #
@@ -300,11 +311,11 @@ class PoseResNet(nn.Module):
                 self._get_deconv_cfg(num_kernels[i], i)
 
             planes = num_filters[i]
-            fc = dcn_deform_conv.ModulatedDeformConvPack(
-                    self.inplanes, planes, 3, 1, 1, bias=False)
+            # fc = dcn_deform_conv.ModulatedDeformConvPack(
+            #         self.inplanes, planes, 3, 1, 1, bias=False)
 
-            # fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
-            #         self.inplanes, planes, 3, 1, 1, groups=planes, bias=False)
+            fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
+                    self.inplanes, planes, 3, 1, 1, groups=planes, bias=False)
 
             # fc = nn.Conv2d(self.inplanes, planes,
             #         kernel_size=3, stride=1, 
@@ -356,15 +367,40 @@ class PoseResNet(nn.Module):
             url = model_urls['resnet{}'.format(num_layers)]
             pretrained_state_dict = model_zoo.load_url(url)
             print('=> loading pretrained model {}'.format(url))
-            self.load_state_dict(pretrained_state_dict, strict=False)
+            print(self.load_state_dict(pretrained_state_dict, strict=False))
             print('=> init deconv weights from normal distribution')
             for name, m in self.deconv_layers.named_modules():
                 if isinstance(m, nn.BatchNorm2d):
                     nn.init.constant_(m.weight, 1)
                     nn.init.constant_(m.bias, 0)
 
-            ## initialization for the ShuffleNet backbone
-            # for name, m in self.deconv_layers.named_modules():
+            # pretrained model for ShuffleNetV2 BaseNodes
+            # url = model_urls['shufflenetv2_x1.0']
+            # pretrained_state_dict = model_zoo.load_url(url)
+            # print('=> loading pretrained model {}'.format(url))
+            # modified_dict = {}
+            # for key, value in pretrained_state_dict.items():
+            #     modified_key = key.replace("stage2", "layer1") \
+            #         .replace("stage3", "layer2").replace("stage4", "layer3") \
+            #         .replace("branch", "b").replace("conv1", "layer0")
+            #     modified_dict[modified_key] = value
+            # print(self.load_state_dict(modified_dict, strict=False))
+
+            # initialization for the ShuffleNet backbone
+            # print('=> init stage1,2,3,4 weights from normal distribution')
+            # for name, m in self.layer1.named_modules():
+            #     if isinstance(m, nn.BatchNorm2d):
+            #         nn.init.constant_(m.weight, 1)
+            #         nn.init.constant_(m.bias, 0)
+            # for name, m in self.layer2.named_modules():
+            #     if isinstance(m, nn.BatchNorm2d):
+            #         nn.init.constant_(m.weight, 1)
+            #         nn.init.constant_(m.bias, 0)
+            # for name, m in self.layer3.named_modules():
+            #     if isinstance(m, nn.BatchNorm2d):
+            #         nn.init.constant_(m.weight, 1)
+            #         nn.init.constant_(m.bias, 0)
+            # for name, m in self.layer4.named_modules():
             #     if isinstance(m, nn.BatchNorm2d):
             #         nn.init.constant_(m.weight, 1)
             #         nn.init.constant_(m.bias, 0)
