@@ -1,6 +1,7 @@
 import numpy as np
 import math
 import os
+import string
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -92,7 +93,7 @@ class ModifiedBaseNode(nn.Module):
         if self.stride == 1:
             self.b2 = nn.Sequential(
                 # pw
-                nn.Conv2d(inp, oup_inc, 1, 1, 0, bias=False),
+                nn.Conv2d(inp // 2, oup_inc, 1, 1, 0, bias=False),
                 batch_norm(oup_inc),
                 nn.ReLU(inplace=True),
                 # dw
@@ -118,8 +119,8 @@ class ModifiedBaseNode(nn.Module):
 class ShuffleNetV2(nn.Module):
     def __init__(self, batch_norm=nn.BatchNorm2d, pretrained=True):
         super(ShuffleNetV2, self).__init__()
-        # self.channels = [24, 116, 232, 464]
-        self.channels = [64, 128, 256, 512]
+        self.channels = [24, 116, 232, 464]
+        # self.channels = [64, 128, 256, 512]
 
         self.layer0 = nn.Sequential(
                     nn.Conv2d(3, self.channels[0],
@@ -129,24 +130,29 @@ class ShuffleNetV2(nn.Module):
                 )    
         # self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
-        stage_repeats = [3, 5, 3]
-        # stage_repeats = [3, 7, 3]
+        # stage_repeats = [3, 5, 3]
+        stage_repeats = [3, 7, 3]
         for idx in range(len(stage_repeats)):
             layers = [BaseNode(self.channels[idx], 
                                self.channels[idx+1], 
                                2, batch_norm, nn.Conv2d)]
             for _ in range(stage_repeats[idx]):
-                #inp, oup, stride, benchmodel
                 layers.append(BaseNode(self.channels[idx], 
                                        self.channels[idx+1], 
                                        1, batch_norm, nn.Conv2d))
             setattr(self, 'layer' + str(idx+1), nn.Sequential(*layers))
 
-        # if pretrained:
-        #     url = model_urls['shufflenetv2_x1.0']
-        #     pretrained_state_dict = model_zoo.load_url(url)
-        #     print('=> loading pretrained model {}'.format(url))
-        #     self.load_state_dict(pretrained_state_dict, strict=False)
+        if pretrained:
+            url = model_urls['shufflenetv2_x1.0']
+            pretrained_state_dict = model_zoo.load_url(url)
+            print('=> loading pretrained model {}'.format(url))
+            modified_dict = {}
+            for key, value in pretrained_state_dict.items():
+                modified_key = key.replace("stage2", "layer1")\
+                    .replace("stage3", "layer2").replace("stage4", "layer3")\
+                    .replace("branch", "b").replace("conv1", "layer0")
+                modified_dict[modified_key] = value
+            print(self.load_state_dict(modified_dict, strict=False))
 
             # self.load_state_dict(torch.load('../../../models/shufflenet_v2_64.pth'), strict=False)
         # if pretrained:
