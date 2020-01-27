@@ -29,8 +29,12 @@ def main(opt):
   
   print('Creating model...')
   model = create_model(opt.arch, opt.heads, opt.head_conv, opt.deform_conv)
-  quantized_model = quantize_sfl_dcn(model, quant_conv=4, quant_bn=None, quant_act=4, quant_mode='symmetric', wt_per_channel=True, wt_percentile=False, act_percentile=False)
+  
+  # quantization-aware fine-tuning
+  quantized_model = quantize_sfl_dcn(model, quant_conv=4, quant_bn=None, quant_act=4,
+                            quant_mode='symmetric', wt_per_channel=True, wt_percentile=False, act_percentile=False)
   print(quantized_model)
+
   optimizer = torch.optim.Adam(model.parameters(), opt.lr)
   start_epoch = 0
   if opt.load_model != '':
@@ -50,11 +54,54 @@ def main(opt):
       pin_memory=True
   )
 
-  # if opt.test:
-  if True:
+  if opt.test:
+  # if True:
     _, preds = trainer.val(0, val_loader)
     val_loader.dataset.run_eval(preds, opt.save_dir)
     return
+
+  train_loader = torch.utils.data.DataLoader(
+      Dataset(opt, 'train'),
+      batch_size=opt.batch_size,
+      shuffle=True,
+      num_workers=opt.num_workers,
+      pin_memory=True,
+      drop_last=True
+  )
+
+  print('Starting training...')
+
+  best = 1e10
+  for epoch in range(start_epoch + 1, opt.num_epochs + 1):
+    mark = epoch if opt.save_all else 'last'
+    log_dict_train, _ = trainer.train(epoch, train_loader)
+    logger.write('epoch: {} |'.format(epoch))
+    for k, v in log_dict_train.items():
+      logger.scalar_summary('train_{}'.format(k), v, epoch)
+      logger.write('{} {:8f} | '.format(k, v))
+    if opt.val_intervals > 0 and epoch % opt.val_intervals == 0:
+      save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(mark)),
+                 epoch, model, optimizer)
+      with torch.no_grad():
+        log_dict_val, preds = trainer.val(epoch, val_loader)
+      for k, v in log_dict_val.items():
+        logger.scalar_summary('val_{}'.format(k), v, epoch)
+        logger.write('{} {:8f} | '.format(k, v))
+      if log_dict_val[opt.metric] < best:
+        best = log_dict_val[opt.metric]
+        save_model(os.path.join(opt.save_dir, 'model_best.pth'),
+                   epoch, model)
+    else:
+      save_model(os.path.join(opt.save_dir, 'model_last.pth'),
+                 epoch, model, optimizer)
+    logger.write('\n')
+    if epoch in opt.lr_step:
+      save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)),
+                 epoch, model, optimizer)
+      lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
+      print('Drop LR to', lr)
+      for param_group in optimizer.param_groups:
+          param_group['lr'] = lr
 
   logger.close()
 
