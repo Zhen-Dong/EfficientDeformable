@@ -16,6 +16,7 @@ import logging
 import torch
 import torch.nn as nn
 # from .DCNv2.dcn_v2 import DCN
+from pytorchcv.model_provider import get_model as ptcv_get_model
 from ..external.modules import dcn_deform_conv
 import torch.utils.model_zoo as model_zoo
 
@@ -192,12 +193,17 @@ class Bottleneck(nn.Module):
 
 class PoseShuffleNetV2(nn.Module):
 
-    def __init__(self, block, layers, heads, head_conv):
+    def __init__(self, block, layers, heads, head_conv, w2=None):
+        self.w2 = w2
         self.heads = heads
         self.deconv_with_bias = False
 
         super(PoseShuffleNetV2, self).__init__()
-        self.channels = [24, 116, 232, 464, 1024]
+
+        if self.w2 == True:
+            self.channels = [24, 244, 488, 976, 2153]
+        else:
+            self.channels = [24, 116, 232, 464, 1024]
         self.layer0 = nn.Sequential(nn.Conv2d(3, self.channels[0], 3, 4, 1, bias=False),
             nn.BatchNorm2d(self.channels[0]),
             nn.ReLU(inplace=True))
@@ -278,16 +284,20 @@ class PoseShuffleNetV2(nn.Module):
             'ERROR: num_deconv_layers is different len(num_deconv_filters)'
 
         layers = []
+        if self.w2 == True:
+            deconv_planes = [2153, 256, 128]
+        else:
+            deconv_planes = [1024, 256, 128]
         for i in range(num_layers):
             kernel, padding, output_padding = \
                 self._get_deconv_cfg(num_kernels[i], i)
 
             planes = num_filters[i]
             fc = dcn_deform_conv.ModulatedDeformConvPack(
-                    1024, planes, 3, 1, 1, bias=False)
+                    deconv_planes[i], planes, 3, 1, 1, bias=False)
 
             # fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
-            #         1024, planes, 3, 1, 1, groups=planes, bias=False)
+            #     deconv_planes[i], planes, 3, 1, 1, groups=planes, bias=False)
 
             # fc = nn.Conv2d(self.inplanes, planes,
             #         kernel_size=3, stride=1,
@@ -332,14 +342,39 @@ class PoseShuffleNetV2(nn.Module):
 
     def init_weights(self, num_layers):
         # pretrained model for ShuffleNetV2 BaseNodes
-        url = model_urls['shufflenetv2_x1.0']
-        pretrained_state_dict = model_zoo.load_url(url)
-        print('=> loading pretrained model {}'.format(url))
+        # url = model_urls['shufflenetv2_x1.0']
+        # pretrained_state_dict = model_zoo.load_url(url)
+        # print('=> loading pretrained model {}'.format(url))
+        # modified_dict = {}
+        # for key, value in pretrained_state_dict.items():
+        #     modified_key = key.replace("stage2", "layer1") \
+        #         .replace("stage3", "layer2").replace("stage4", "layer3") \
+        #         .replace("branch", "b").replace("conv1", "layer0").replace("conv5", "layer4")
+        #     modified_dict[modified_key] = value
+        # print(self.load_state_dict(modified_dict, strict=False))
+
+        # pretrained PyTorchCV model for ShuffleNetV2 BaseNodes
+        if self.w2 == True:
+            model_name = "shufflenetv2_w2"
+        else:
+            model_name = "shufflenetv2_w1"
+        pretrained_state_dict = ptcv_get_model(model_name, pretrained=True).state_dict()
+        print('=> loading PyTorchCV pretrained model {}'.format(model_name))
         modified_dict = {}
         for key, value in pretrained_state_dict.items():
-            modified_key = key.replace("stage2", "layer1") \
-                .replace("stage3", "layer2").replace("stage4", "layer3") \
-                .replace("branch", "b").replace("conv1", "layer0").replace("conv5", "layer4")
+            modified_key = key.replace("features.stage1.", "layer1.") \
+                .replace("features.stage2.", "layer2.").replace("features.stage3.", "layer3.") \
+                .replace("unit1.", "0.").replace("unit2.", "1.").replace("unit3.", "2.") \
+                .replace("unit4.", "3.").replace("unit5.", "4.").replace("unit6.", "5.") \
+                .replace("unit7.", "6.").replace("unit8.", "7.")  \
+                .replace("compress_layer0", "b2.0") \
+                .replace("dw_conv2", "b2.3").replace("compress_bn1", "b2.1") \
+                .replace("dw_bn2", "b2.4").replace("compress_conv1", "b2.0") \
+                .replace("expand_conv3", "b2.5").replace("expand_bn3", "b2.6") \
+                .replace("dw_conv4", "b1.0").replace("dw_bn4", "b1.1") \
+                .replace("expand_conv5", "b1.2").replace("expand_bn5", "b1.3") \
+                .replace("features.final_block.conv", "layer4.0").replace("features.final_block.bn", "layer4.1") \
+                .replace("features.init_block.conv.conv", "layer0.0").replace("features.init_block.conv.bn", "layer0.1")
             modified_dict[modified_key] = value
         print(self.load_state_dict(modified_dict, strict=False))
 
@@ -366,6 +401,6 @@ def get_shufflenetv2_dcn(num_layers, heads, head_conv=64, deform_conv='Modulated
     # this is a placeholder, modules for ShuffleNetV2 are hardcoded in the model.
     block_class, layers = (BaseNode, [3, 7, 3, 1])
 
-    model = PoseShuffleNetV2(block_class, layers, heads, head_conv=head_conv)
+    model = PoseShuffleNetV2(block_class, layers, heads, head_conv=head_conv, w2=None)
     model.init_weights(num_layers)
     return model
