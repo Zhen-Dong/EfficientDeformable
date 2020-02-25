@@ -8,7 +8,7 @@ from progress.bar import Bar
 import time
 import torch
 
-from models.external.nms import soft_nms_39
+# from models.external.nms import soft_nms_39
 from models.decode import multi_pose_decode
 from models.utils import flip_tensor, flip_lr_off, flip_lr
 from utils.image import get_affine_transform

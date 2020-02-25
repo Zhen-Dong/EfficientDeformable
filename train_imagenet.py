@@ -129,6 +129,7 @@ def main_worker(gpu, ngpus_per_node, args):
         dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,
                                 world_size=args.world_size, rank=args.rank)
     # create model
+    # we need to modify torchvision to create self-defined architecture
     if args.pretrained:
         print("=> using pre-trained model '{}'".format(args.arch))
         model = models.__dict__[args.arch](pretrained=True)
@@ -256,7 +257,7 @@ def main_worker(gpu, ngpus_per_node, args):
                 'arch': args.arch,
                 'state_dict': model.state_dict(),
                 'best_acc1': best_acc1,
-                'optimizer' : optimizer.state_dict(),
+                'optimizer': optimizer.state_dict(),
             }, is_best)
 
 

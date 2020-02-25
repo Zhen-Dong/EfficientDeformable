@@ -203,6 +203,7 @@ class ModulatedDeformConvPack(ModulatedDeformConv):
         self.conv_offset_mask.bias.data.zero_()
 
     def forward(self, x):
+        # print(x.shape)
         out = self.conv_offset_mask(x)
         o1, o2, mask = torch.chunk(out, 3, dim=1)
         offset = torch.cat((o1, o2), dim=1)
