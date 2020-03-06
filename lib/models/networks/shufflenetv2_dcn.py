@@ -228,7 +228,8 @@ class PoseShuffleNetV2(nn.Module):
         self.deconv_layers = self._make_deconv_layer(
             num_layers=3,
             num_filters=[256, 128, 64],
-            num_kernels=[4, 4, 4],
+            num_kernels=[3, 3, 3],
+            # num_kernels=[4, 4, 4],
         )
 
         for head in self.heads:
@@ -343,7 +344,7 @@ class PoseShuffleNetV2(nn.Module):
                 output_padding=output_padding,
                 bias=self.deconv_with_bias)
             # When kernel size = 4, we have output_padding = 0, padding = 1,
-            # so that H_out = 2 * H_in - 3, W_out = 2 * W_in - 3,
+            # so that H_out = 2 * H_in, W_out = 2 * W_in,
             # When kernel size = 3, we have output_padding = 1, padding = 1,
             # so that H_out = 2 * H_in, W_out = 2 * W_in,
             # it should be noted that the channel number is not changed
