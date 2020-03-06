@@ -369,11 +369,11 @@ class PoseShuffleNetV2(nn.Module):
 
         x = self.deconv_layers(x)
         # print(x.shape)
+        # the shape of x should be [16, 64, 128, 128]
         ret = {}
         # we set ctdet on, with self.heads = {'hm': 80, 'wh': 2, 'reg': 2}
         # training chunk size should be 16, so that the shape of ret[head]
         # should be [16, 80, 128, 128], [16, 2, 128, 128], [16, 2, 128, 128]
-        # the shape of the other branch of x is [16, 64, 128, 128]
         for head in self.heads:
             ret[head] = self.__getattr__(head)(x)
             # print(ret[head].shape)
