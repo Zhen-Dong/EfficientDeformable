@@ -210,8 +210,8 @@ class PoseShuffleNetV2(nn.Module):
             self.channels = [64, 256, 512, 1024, 2048]
             # self.channels = [24, 244, 488, 976, 2153]
         else:
-            # self.channels = [64, 128, 256, 512, 1024]
-            self.channels = [24, 116, 232, 464, 1024]
+            self.channels = [64, 128, 256, 512, 1024]
+            # self.channels = [24, 116, 232, 464, 1024]
         self.layer0 = nn.Sequential(nn.Conv2d(3, self.channels[0], 3, 4, 1, bias=False),
             nn.BatchNorm2d(self.channels[0]),
             nn.ReLU(inplace=True))
