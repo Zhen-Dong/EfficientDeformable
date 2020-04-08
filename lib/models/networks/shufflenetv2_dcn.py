@@ -446,14 +446,14 @@ class PoseShuffleNetV2(nn.Module):
         # print(self.load_state_dict(modified_dict, strict=False))
 
         # self-defined pretrained model for Wide ShuffleNetV2 BaseNodes
-        pretrained_state_dict = torch.load('/rscratch/'
-            'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_w2_512_trial1/model_best.pth.tar')['state_dict']
-        print('=> loading self-defined wide ShuffleNetV2 pretrained model')
-
-        # # self-defined pretrained model for ShuffleNetV2 BaseNodes
         # pretrained_state_dict = torch.load('/rscratch/'
-        #     'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_1_512_trial1/model_best.pth.tar')['state_dict']
-        # print('=> loading self-defined pretrained model')
+        #     'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_w2_512_trial1/model_best.pth.tar')['state_dict']
+        # print('=> loading self-defined wide ShuffleNetV2 pretrained model')
+
+        # self-defined pretrained model for ShuffleNetV2 BaseNodes
+        pretrained_state_dict = torch.load('/rscratch/'
+            'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_1_512_trial1/model_best.pth.tar')['state_dict']
+        print('=> loading self-defined pretrained model')
 
         modified_dict = {}
         for key, value in pretrained_state_dict.items():
@@ -513,7 +513,7 @@ def get_shufflenetv2_dcn(num_layers, heads, head_conv=64, deform_conv='Modulated
     # this is a placeholder, modules for ShuffleNetV2 are hardcoded in the model.
     block_class, layers = (BaseNode, [3, 7, 3, 1])
 
-    model = PoseShuffleNetV2(block_class, layers, heads, head_conv=head_conv, w2=True)
+    model = PoseShuffleNetV2(block_class, layers, heads, head_conv=head_conv, w2=None)
     model.init_weights(num_layers)
 
     # input = torch.randn(1, 3, 512, 512)
