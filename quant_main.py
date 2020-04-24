@@ -17,7 +17,8 @@ from portable_quantizer import quantize_sfl_dcn
 
 def main(opt):
   torch.manual_seed(opt.seed)
-  torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
+  torch.backends.cudnn.benchmark = False
+  # torch.backends.cudnn.benchmark = not opt.not_cuda_benchmark and not opt.test
   Dataset = get_dataset(opt.dataset, opt.task)
   opt = opts().update_dataset_info_and_set_heads(opt, Dataset)
   print(opt)
@@ -26,7 +27,8 @@ def main(opt):
 
   os.environ['CUDA_VISIBLE_DEVICES'] = opt.gpus_str
   opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
-  
+  print(opt.device)
+
   print('Creating model...')
   model = create_model(opt.arch, opt.heads, opt.head_conv, opt.deform_conv)
   
@@ -70,7 +72,6 @@ def main(opt):
   )
 
   print('Starting training...')
-
   best = 1e10
   for epoch in range(start_epoch + 1, opt.num_epochs + 1):
     mark = epoch if opt.save_all else 'last'
@@ -102,7 +103,6 @@ def main(opt):
       print('Drop LR to', lr)
       for param_group in optimizer.param_groups:
           param_group['lr'] = lr
-
   logger.close()
 
 if __name__ == '__main__':
