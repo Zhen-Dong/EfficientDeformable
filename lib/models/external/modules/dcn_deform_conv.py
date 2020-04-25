@@ -374,8 +374,21 @@ class DeformConvWithOffsetScaleBoundPositive(nn.Module):
 
         self.conv_bound = torch.nn.Hardtanh(
             min_val=0, max_val=offset_bound, inplace=True)
-        self.conv = DeformConv(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
-                               padding=padding, dilation=dilation, groups=groups, deformable_groups=deformable_groups, bias=bias)
+
+        self.conv = nn.Sequential(
+            # pw
+            # nn.Conv2d(in_channels, hidden_state, 1, 1, 0, bias=False),
+            # dw
+            DeformConv(in_channels, in_channels, kernel_size=kernel_size, stride=stride,
+                       padding=padding, dilation=dilation, groups=in_channels, deformable_groups=deformable_groups,
+                       bias=bias),
+            # pw-linear
+            nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
+        )
+
+        # self.conv = DeformConv(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+        #                        padding=padding, dilation=dilation, groups=groups, deformable_groups=deformable_groups,
+        #                        bias=bias)
 
         self.anchor_offset = torch.FloatTensor([-1, -1, -1, 0, -1, 1,
                                                 0, -1,  0, 0,  0, 1,
