@@ -210,8 +210,8 @@ class PoseShuffleNetV2(nn.Module):
             self.channels = [64, 256, 512, 1024, 2048]
             # self.channels = [24, 244, 488, 976, 2153]
         else:
-            # self.channels = [64, 128, 256, 512, 1024]
-            self.channels = [24, 116, 232, 464, 1024]
+            self.channels = [64, 128, 256, 512, 1024]
+            # self.channels = [24, 116, 232, 464, 1024]
         self.layer0 = nn.Sequential(nn.Conv2d(3, self.channels[0], 3, 4, 1, bias=False),
             nn.BatchNorm2d(self.channels[0]),
             nn.ReLU(inplace=True))
@@ -323,8 +323,8 @@ class PoseShuffleNetV2(nn.Module):
             #     nn.Conv2d(hidden_state, planes, 1, 1, 0, bias=False)
             # )
 
-            fc = dcn_deform_conv.ModulatedDeformConvPack(
-                    deconv_planes[i], planes, 3, 1, 1, bias=False)
+            # fc = dcn_deform_conv.ModulatedDeformConvPack(
+            #         deconv_planes[i], planes, 3, 1, 1, bias=False)
 
             # fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
             #     deconv_planes[i], planes, 3, 1, 1, groups=planes, bias=False)
@@ -332,14 +332,14 @@ class PoseShuffleNetV2(nn.Module):
             # fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
             #     deconv_planes[i], planes, 3, 1, 1, groups=planes, bias=False, hidden_state=planes)
 
-            # fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
-            #     deconv_planes[i], planes, 3, 1, 1, groups=planes, bias=False, hidden_state=128)
+            fc = dcn_deform_conv.DeformConvWithOffsetScaleBoundPositive(
+                deconv_planes[i], planes, 3, 1, 1, groups=planes, bias=False, hidden_state=128)
 
             # fc = nn.Conv2d(self.inplanes, planes,
             #         kernel_size=3, stride=1,
             #         padding=1, dilation=1, bias=False)
 
-            # fill_fc_weights(fc)
+            fill_fc_weights(fc)
 
             # up = nn.ConvTranspose2d(
             #         in_channels=planes,
@@ -460,43 +460,43 @@ class PoseShuffleNetV2(nn.Module):
         # print('=> loading self-defined wide ShuffleNetV2 pretrained model')
 
         # self-defined pretrained model for ShuffleNetV2 BaseNodes
-        # pretrained_state_dict = torch.load('/rscratch/'
-        #     'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_1_512_trial1/model_best.pth.tar')['state_dict']
-        # print('=> loading self-defined pretrained model')
+        pretrained_state_dict = torch.load('/rscratch/'
+            'zhendong/yaohuic/CenterNet/src/pretrain_logs/shufflenetv2_1_512_trial1/model_best.pth.tar')['state_dict']
+        print('=> loading self-defined pretrained model')
 
-        # modified_dict = {}
-        # for key, value in pretrained_state_dict.items():
-        #     modified_key = key.replace('module.', '').replace("stage2", "layer1") \
-        #         .replace("stage3", "layer2").replace("stage4", "layer3") \
-        #         .replace("branch", "b").replace("conv1", "layer0").replace("conv5", "layer4")
-        #     modified_dict[modified_key] = value
-        # print(self.load_state_dict(modified_dict, strict=False))
+        modified_dict = {}
+        for key, value in pretrained_state_dict.items():
+            modified_key = key.replace('module.', '').replace("stage2", "layer1") \
+                .replace("stage3", "layer2").replace("stage4", "layer3") \
+                .replace("branch", "b").replace("conv1", "layer0").replace("conv5", "layer4")
+            modified_dict[modified_key] = value
+        print(self.load_state_dict(modified_dict, strict=False))
 
 
         # pretrained PyTorchCV model for ShuffleNetV2 BaseNodes
-        if self.w2 == True:
-            model_name = "shufflenetv2_w2"
-        else:
-            model_name = "shufflenetv2_w1"
-        pretrained_state_dict = ptcv_get_model(model_name, pretrained=True).state_dict()
-        print('=> loading PyTorchCV pretrained model {}'.format(model_name))
-        modified_dict = {}
-        for key, value in pretrained_state_dict.items():
-            modified_key = key.replace("features.stage1.", "layer1.") \
-                .replace("features.stage2.", "layer2.").replace("features.stage3.", "layer3.") \
-                .replace("unit1.", "0.").replace("unit2.", "1.").replace("unit3.", "2.") \
-                .replace("unit4.", "3.").replace("unit5.", "4.").replace("unit6.", "5.") \
-                .replace("unit7.", "6.").replace("unit8.", "7.")  \
-                .replace("compress_layer0", "b2.0") \
-                .replace("dw_conv2", "b2.3").replace("compress_bn1", "b2.1") \
-                .replace("dw_bn2", "b2.4").replace("compress_conv1", "b2.0") \
-                .replace("expand_conv3", "b2.5").replace("expand_bn3", "b2.6") \
-                .replace("dw_conv4", "b1.0").replace("dw_bn4", "b1.1") \
-                .replace("expand_conv5", "b1.2").replace("expand_bn5", "b1.3") \
-                .replace("features.final_block.conv", "layer4.0").replace("features.final_block.bn", "layer4.1") \
-                .replace("features.init_block.conv.conv", "layer0.0").replace("features.init_block.conv.bn", "layer0.1")
-            modified_dict[modified_key] = value
-        print(self.load_state_dict(modified_dict, strict=False))
+        # if self.w2 == True:
+        #     model_name = "shufflenetv2_w2"
+        # else:
+        #     model_name = "shufflenetv2_w1"
+        # pretrained_state_dict = ptcv_get_model(model_name, pretrained=True).state_dict()
+        # print('=> loading PyTorchCV pretrained model {}'.format(model_name))
+        # modified_dict = {}
+        # for key, value in pretrained_state_dict.items():
+        #     modified_key = key.replace("features.stage1.", "layer1.") \
+        #         .replace("features.stage2.", "layer2.").replace("features.stage3.", "layer3.") \
+        #         .replace("unit1.", "0.").replace("unit2.", "1.").replace("unit3.", "2.") \
+        #         .replace("unit4.", "3.").replace("unit5.", "4.").replace("unit6.", "5.") \
+        #         .replace("unit7.", "6.").replace("unit8.", "7.")  \
+        #         .replace("compress_layer0", "b2.0") \
+        #         .replace("dw_conv2", "b2.3").replace("compress_bn1", "b2.1") \
+        #         .replace("dw_bn2", "b2.4").replace("compress_conv1", "b2.0") \
+        #         .replace("expand_conv3", "b2.5").replace("expand_bn3", "b2.6") \
+        #         .replace("dw_conv4", "b1.0").replace("dw_bn4", "b1.1") \
+        #         .replace("expand_conv5", "b1.2").replace("expand_bn5", "b1.3") \
+        #         .replace("features.final_block.conv", "layer4.0").replace("features.final_block.bn", "layer4.1") \
+        #         .replace("features.init_block.conv.conv", "layer0.0").replace("features.init_block.conv.bn", "layer0.1")
+        #     modified_dict[modified_key] = value
+        # print(self.load_state_dict(modified_dict, strict=False))
 
         # initialization for the ShuffleNet backbone
         # print('=> init stage0,1,2,3 weights from normal distribution')
