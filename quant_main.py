@@ -13,7 +13,7 @@ from logger import Logger
 from lib.datasets.dataset_factory import get_dataset
 from trains.train_factory import train_factory
 
-from portable_quantizer import quantize_sfl_dcn
+from portable_quantizer import quantize_shufflenetv2_dcn
 
 def main(opt):
   torch.manual_seed(opt.seed)
@@ -31,17 +31,24 @@ def main(opt):
 
   print('Creating model...')
   model = create_model(opt.arch, opt.heads, opt.head_conv, opt.deform_conv)
-  
-  # quantization-aware fine-tuning
-  quantized_model = quantize_sfl_dcn(model, quant_conv=4, quant_bn=None, quant_act=4,
-                            quant_mode='symmetric', wt_per_channel=True, wt_percentile=False, act_percentile=False)
-  print(quantized_model)
 
   optimizer = torch.optim.Adam(model.parameters(), opt.lr)
   start_epoch = 0
+
   if opt.load_model != '':
     model, optimizer, start_epoch = load_model(
       model, opt.load_model, optimizer, opt.resume, opt.lr, opt.lr_step)
+
+  # quantization-aware fine-tuning
+  quantize_shufflenetv2_dcn(model, quant_conv=8, quant_bn=None, quant_act=8, quant_mode='symmetric',
+                            wt_per_channel=True, wt_percentile=False, act_percentile=False)
+  # quantized_model = quantize_sfl_dcn(model, quant_conv=4, quant_bn=None, quant_act=4,
+  #                           quant_mode='symmetric', wt_per_channel=True, wt_percentile=False, act_percentile=False)
+  # print(quantized_model)
+
+  # if opt.load_model != '':
+  #   model, optimizer, start_epoch = load_model(
+  #     model, opt.load_model, optimizer, opt.resume, opt.lr, opt.lr_step)
 
   Trainer = train_factory[opt.task]
   trainer = Trainer(opt, model, optimizer)
@@ -56,11 +63,11 @@ def main(opt):
       pin_memory=True
   )
 
-  if opt.test:
-  # if True:
-    _, preds = trainer.val(0, val_loader)
-    val_loader.dataset.run_eval(preds, opt.save_dir)
-    return
+  # if opt.test:
+  # # if True:
+  #   _, preds = trainer.val(0, val_loader)
+  #   val_loader.dataset.run_eval(preds, opt.save_dir)
+  #   return
 
   train_loader = torch.utils.data.DataLoader(
       Dataset(opt, 'train'),
@@ -103,6 +110,12 @@ def main(opt):
       print('Drop LR to', lr)
       for param_group in optimizer.param_groups:
           param_group['lr'] = lr
+
+  # opt.test = True
+  if opt.test:
+    _, preds = trainer.val(0, val_loader)
+    val_loader.dataset.run_eval(preds, opt.save_dir)
+
   logger.close()
 
 if __name__ == '__main__':
