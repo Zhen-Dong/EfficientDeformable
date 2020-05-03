@@ -350,24 +350,34 @@ class DeformConvWithOffsetScaleBound(nn.Module):
 class DeformConvWithOffsetScaleBoundPositive(nn.Module):
 
     def __init__(self, in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1,
-                 groups=1, deformable_groups=1, bias=False, offset_bound=8, hidden_state=64):
+                 groups=1, deformable_groups=1, bias=False, offset_bound=8, hidden_state=64, BN_MOMENTUM=0.1):
         super(DeformConvWithOffsetScaleBoundPositive, self).__init__()
+        # self.conv_scale = nn.Conv2d(in_channels, deformable_groups, kernel_size=1, stride=1, padding=0, bias=True)
         # self.conv_scale = nn.Conv2d(in_channels, deformable_groups, kernel_size=3, stride=1, padding=1, bias=True)
         self.conv_scale = nn.Sequential(
             # pw
             nn.Conv2d(in_channels, hidden_state, 1, 1, 0, bias=False),
-            nn.BatchNorm2d(hidden_state),
+            nn.BatchNorm2d(hidden_state, momentum=BN_MOMENTUM),
             nn.ReLU(inplace=True),
             # dw
             nn.Conv2d(hidden_state, hidden_state, 3, 1, 1, groups=hidden_state, bias=False),
-            nn.BatchNorm2d(hidden_state),
+            nn.BatchNorm2d(hidden_state, momentum=BN_MOMENTUM),
             # pw-linear
             nn.Conv2d(hidden_state, deformable_groups, 1, 1, 0, bias=False)
+            # nn.Conv2d(hidden_state, deformable_groups, 1, 1, 0, bias=True)
         )
 
-        if type(self.conv_scale) == nn.Conv2d:
-            self.conv_scale.weight.data.zero_()
-            nn.init.constant_(self.conv_scale.bias.data, 1)
+        for m in self.conv_scale.modules():
+            if isinstance(m, nn.Conv2d):
+                m.weight.data.zero_()
+                if m.bias is not None:
+                    print("initialize offset bias")
+                    nn.init.constant_(m.bias, 1)
+
+        # if type(self.conv_scale) == nn.Conv2d:
+        #     self.conv_scale.weight.data.zero_()
+        #     if self.conv_scale.bias is not None:
+        #         nn.init.constant_(self.conv_scale.bias.data, 1)
 
         # self.conv_scale.weight.data.zero_()
         # nn.init.constant_(self.conv_scale.bias.data, 1)
@@ -375,26 +385,32 @@ class DeformConvWithOffsetScaleBoundPositive(nn.Module):
         self.conv_bound = torch.nn.Hardtanh(
             min_val=0, max_val=offset_bound, inplace=True)
 
-        # self.conv = DeformConv(in_channels, in_channels, kernel_size=kernel_size, stride=stride,
-        #                padding=padding, dilation=dilation, groups=in_channels, deformable_groups=deformable_groups,
-        #                bias=bias)
-        #
-        # self.conv_channel = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
+        self.conv = DeformConv(in_channels, in_channels, kernel_size=kernel_size, stride=stride,
+                       padding=padding, dilation=dilation, groups=in_channels, deformable_groups=deformable_groups,
+                       bias=bias)
 
-        self.conv = DeformConv(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
-                               padding=padding, dilation=dilation, groups=groups, deformable_groups=deformable_groups,
-                               bias=bias)
+        self.conv_channel = nn.Conv2d(in_channels, out_channels, 1, 1, 0, bias=False)
+
+        # self.conv = DeformConv(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+        #                        padding=padding, dilation=dilation, groups=groups, deformable_groups=deformable_groups,
+        #                        bias=bias)
 
         self.anchor_offset = torch.FloatTensor([-1, -1, -1, 0, -1, 1,
                                                 0, -1,  0, 0,  0, 1,
                                                 1, -1,  1, 0,  1, 1]).unsqueeze(0).unsqueeze(2).unsqueeze(2)
 
+        if type(self.conv_channel) == nn.Conv2d:
+            nn.init.normal_(self.conv_channel.weight, std=0.001)
+            # torch.nn.init.kaiming_normal_(m.weight.data, nonlinearity='relu')
+            # torch.nn.init.xavier_normal_(m.weight.data)
+            if self.conv_channel.bias is not None:
+                nn.init.constant_(self.conv_channel.bias, 0)
+
     def forward(self, x):
         s = self.conv_bound(self.conv_scale(x))
         o = self.anchor_offset.to(x.device) * (s - 1)
-        # return self.conv_channel(self.conv(x, o))
-        return self.conv(x, o)
-
+        return self.conv_channel(self.conv(x, o))
+        # return self.conv(x, o)
 
 
 class ModulatedDeformConvWithOffsetScaleBoundPositive(nn.Module):
