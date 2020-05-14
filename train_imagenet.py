@@ -18,6 +18,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as models
 
+
 model_names = sorted(name for name in models.__dict__
     if name.islower() and not name.startswith("__")
     and callable(models.__dict__[name]))
@@ -206,7 +207,8 @@ def main_worker(gpu, ngpus_per_node, args):
     train_dataset = datasets.ImageFolder(
         traindir,
         transforms.Compose([
-            transforms.RandomResizedCrop(224),
+            # transforms.RandomResizedCrop(256),
+            transforms.RandomResizedCrop(512),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
             normalize,
@@ -223,8 +225,10 @@ def main_worker(gpu, ngpus_per_node, args):
 
     val_loader = torch.utils.data.DataLoader(
         datasets.ImageFolder(valdir, transforms.Compose([
-            transforms.Resize(256),
-            transforms.CenterCrop(224),
+            # transforms.Resize(294),
+            # transforms.CenterCrop(256),
+            transforms.Resize(586),
+            transforms.CenterCrop(512),
             transforms.ToTensor(),
             normalize,
         ])),
